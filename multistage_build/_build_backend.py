@@ -130,6 +130,25 @@ class BuildBackend:
             hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
         return hooks
 
+    def _load_build_editable_hooks(self):
+        pyproject_content = tomllib.loads(
+            (self._source_root / 'pyproject.toml').read_text(),
+        )
+        multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
+        declared_hooks = multistage_config.get('post-build-editable', [])
+        hooks = []
+        for hook in declared_hooks:
+            if isinstance(hook, str):
+                hook_function_ep = hook
+                hook_path = None
+            else:
+                hook_function_ep = hook['hook-function']
+                hook_path = hook.get('hook-path', [])
+                if isinstance(hook_path, str):
+                    hook_path = [hook_path]
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
+        return hooks
+
     @property
     def build_wheel(self):
         """Return the build wheel function for the backend, or raise AttributeError."""
@@ -176,6 +195,8 @@ class BuildBackend:
 
         def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
             result = backend_build_editable(wheel_directory, config_settings, metadata_directory)
+            for hook in self._load_build_editable_hooks():
+                hook(result)
             return result
 
         return build_editable

@@ -167,3 +167,53 @@ def test_build_wheel__hook_with_path(tmp_path):
     out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True)
     assert 'Some func given wheel' in out
     assert 'Another func given wheel' in out
+
+
+def test_build_editable__hook_with_path(tmp_path):
+    backend_root = tmp_path / 'backend-root'
+    backend_root.mkdir(exist_ok=False)
+    shutil.copytree(project_root, backend_root / 'multistage_build')
+
+    another_backend_root = tmp_path / 'backend-root2'
+    another_backend_root.mkdir(exist_ok=False)
+
+    (another_backend_root / 'some_mod.py').write_text(
+        textwrap.dedent('''
+        def another_func(whl_path):
+            print(f'Another func given wheel: {whl_path}')
+    '''),
+    )
+
+    pyprj = tmp_path / 'pyproject.toml'
+    pyprj.write_text(
+        textwrap.dedent("""
+    [build-system]
+    requires = [
+        'setuptools',
+        'wheel',
+        'tomli >= 1.1.0 ; python_version < "3.11"',
+    ]
+    build-backend = "multistage_build:backend"
+    backend-path = ["backend-root"]
+
+    [tool.multistage-build]
+    build-backend = "setuptools.build_meta"
+    post-build-editable = [
+        {hook-function="some_mod:another_func", hook-path="backend-root2"},
+    ]
+
+    [project]
+    name = "some-project"
+    version = "0.1.0"
+    """),
+    )
+
+    venv_dir = tmp_path / 'venv'
+    out = subprocess.check_output(
+        [sys.executable, '-m', 'venv', venv_dir],
+        text=True,
+    )
+
+    # TODO: Capture the wheel, and validate it.
+    out = subprocess.check_output([venv_dir / 'bin' / 'python', '-m', 'pip', 'install', '--editable', '.', '--verbose'], cwd=tmp_path, stderr=subprocess.STDOUT, text=True)
+    assert 'Another func given wheel' in out
