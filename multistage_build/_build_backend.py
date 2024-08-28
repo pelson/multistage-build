@@ -125,9 +125,9 @@ class BuildBackend:
             else:
                 hook_function_ep = hook['hook-function']
                 hook_path = hook.get('hook-path', [])
-                if isinstance(hook_path, str):
-                    hook_path = [hook_path]
-            hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
+                if not isinstance(hook_path, str):
+                    hook_path = ':'.join(hook_path)
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=hook_path))
         return hooks
 
     def _load_build_editable_hooks(self):
@@ -144,9 +144,9 @@ class BuildBackend:
             else:
                 hook_function_ep = hook['hook-function']
                 hook_path = hook.get('hook-path', [])
-                if isinstance(hook_path, str):
-                    hook_path = [hook_path]
-            hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
+                if not isinstance(hook_path, str):
+                    hook_path = ':'.join(hook_path)
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=hook_path))
         return hooks
 
     def _load_prepare_metadata_for_build_wheel(self):
@@ -163,9 +163,9 @@ class BuildBackend:
             else:
                 hook_function_ep = hook['hook-function']
                 hook_path = hook.get('hook-path', [])
-                if isinstance(hook_path, str):
-                    hook_path = [hook_path]
-            hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
+                if not isinstance(hook_path, str):
+                    hook_path = ':'.join(hook_path)
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=hook_path))
         return hooks
 
     @property
