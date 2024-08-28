@@ -27,6 +27,7 @@ dependencies = [
 test = [
   "build",
   "pytest",
+  "pyproject_hooks",
 ]
 doc = [
 ]

@@ -149,6 +149,25 @@ class BuildBackend:
             hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
         return hooks
 
+    def _load_prepare_metadata_for_build_wheel(self):
+        pyproject_content = tomllib.loads(
+            (self._source_root / 'pyproject.toml').read_text(),
+        )
+        multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
+        declared_hooks = multistage_config.get('post-prepare-metadata-for-build-wheel', [])
+        hooks = []
+        for hook in declared_hooks:
+            if isinstance(hook, str):
+                hook_function_ep = hook
+                hook_path = None
+            else:
+                hook_function_ep = hook['hook-function']
+                hook_path = hook.get('hook-path', [])
+                if isinstance(hook_path, str):
+                    hook_path = [hook_path]
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=':'.join(hook_path)))
+        return hooks
+
     @property
     def build_wheel(self):
         """Return the build wheel function for the backend, or raise AttributeError."""
@@ -180,7 +199,13 @@ class BuildBackend:
     @property
     def prepare_metadata_for_build_wheel(self):
         backend = self._load_wrapped_backend()
-        return backend.prepare_metadata_for_build_wheel
+        def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
+            dist_info_name = backend.prepare_metadata_for_build_wheel(metadata_directory, config_settings)
+            dist_info_path = pathlib.Path(metadata_directory) / dist_info_name
+            for hook in self._load_prepare_metadata_for_build_wheel():
+                hook(dist_info_path)
+            return dist_info_name
+        return prepare_metadata_for_build_wheel
 
     @property
     def get_requires_for_build_sdist(self):
