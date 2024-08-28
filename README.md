@@ -16,7 +16,7 @@ def my_wheel_post_processing_func(wheel_path):
 ```
 
 This function can then be declared as post-processing step of the PEP-517
-`build_wheel` function: 
+`build_wheel` function:
 
 ```
 [build-system]

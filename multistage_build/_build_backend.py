@@ -1,11 +1,7 @@
+from importlib.machinery import PathFinder
+import os
 import pathlib
 import sys
-
-
-import os
-import sys
-
-from importlib.machinery import PathFinder
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -27,6 +23,7 @@ HOOK_NAMES = {
 }
 
 import typing
+
 
 class BackendUnavailable(Exception):
     """Will be raised if the backend cannot be imported in the hook process."""
@@ -72,8 +69,9 @@ class _BackendPathFinder:
 
         return spec
 
-import traceback
 from importlib import import_module
+import traceback
+
 
 def _build_backend(backend: str, *, backend_path: typing.Optional[str]):
     """Find and load the build backend"""

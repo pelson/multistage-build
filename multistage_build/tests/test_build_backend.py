@@ -1,5 +1,5 @@
-import shutil
 import pathlib
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -14,7 +14,8 @@ def test_build_wheel__no_hooks(tmp_path):
     backend_root.mkdir(exist_ok=False)
     shutil.copytree(project_root, backend_root / 'multistage_build')
     pyprj = tmp_path / 'pyproject.toml'
-    pyprj.write_text(textwrap.dedent("""
+    pyprj.write_text(
+        textwrap.dedent("""
     [build-system]
     requires = [
         'setuptools',
@@ -23,14 +24,15 @@ def test_build_wheel__no_hooks(tmp_path):
     ]
     build-backend = "multistage_build:backend"
     backend-path = ["backend-root"]
-    
+
     [tool.multistage-build]
     build-backend = "setuptools.build_meta"
 
     [project]
     name = "some-project"
     version = "0.1.0"
-    """))
+    """),
+    )
 
     # TODO: Capture the wheel, and validate it.
     try:
@@ -49,12 +51,15 @@ def test_build_wheel__build_backend_path(tmp_path):
     another_backend_root = tmp_path / 'backend-root2'
     another_backend_root.mkdir(exist_ok=False)
 
-    (another_backend_root / 'setuptools_wrapper.py').write_text(textwrap.dedent('''
+    (another_backend_root / 'setuptools_wrapper.py').write_text(
+        textwrap.dedent('''
         from setuptools.build_meta import *
-    '''))
+    '''),
+    )
 
     pyprj = tmp_path / 'pyproject.toml'
-    pyprj.write_text(textwrap.dedent("""
+    pyprj.write_text(
+        textwrap.dedent("""
     [build-system]
     requires = [
         'setuptools',
@@ -71,11 +76,14 @@ def test_build_wheel__build_backend_path(tmp_path):
     [project]
     name = "some-project"
     version = "0.1.0"
-    """))
+    """),
+    )
 
     # TODO: Capture the wheel, and validate it.
-    out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path,
-                                  text=True)
+    out = subprocess.check_output(
+        [sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path,
+        text=True,
+    )
     assert 'Successfully built' in out
 
 
@@ -84,7 +92,8 @@ def test_build_wheel__simple_hook(tmp_path):
     backend_root.mkdir(exist_ok=False)
     shutil.copytree(project_root, backend_root / 'multistage_build')
     pyprj = tmp_path / 'pyproject.toml'
-    pyprj.write_text(textwrap.dedent("""
+    pyprj.write_text(
+        textwrap.dedent("""
     [build-system]
     requires = [
         'setuptools',
@@ -103,7 +112,8 @@ def test_build_wheel__simple_hook(tmp_path):
     [project]
     name = "some-project"
     version = "0.1.0"
-    """))
+    """),
+    )
 
     # TODO: Capture the wheel, and validate it.
     out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True)
@@ -118,16 +128,19 @@ def test_build_wheel__hook_with_path(tmp_path):
     another_backend_root = tmp_path / 'backend-root2'
     another_backend_root.mkdir(exist_ok=False)
 
-    (another_backend_root / 'some_mod.py').write_text(textwrap.dedent('''
+    (another_backend_root / 'some_mod.py').write_text(
+        textwrap.dedent('''
         def some_func(whl_path):
             print(f'Some func given wheel: {whl_path}')
-            
+
         def another_func(whl_path):
             print(f'Another func given wheel: {whl_path}')
-    '''))
+    '''),
+    )
 
     pyprj = tmp_path / 'pyproject.toml'
-    pyprj.write_text(textwrap.dedent("""
+    pyprj.write_text(
+        textwrap.dedent("""
     [build-system]
     requires = [
         'setuptools',
@@ -147,7 +160,8 @@ def test_build_wheel__hook_with_path(tmp_path):
     [project]
     name = "some-project"
     version = "0.1.0"
-    """))
+    """),
+    )
 
     # TODO: Capture the wheel, and validate it.
     out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True)

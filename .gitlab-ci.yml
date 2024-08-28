@@ -1,4 +1,4 @@
-# Use the acc-py CI templates documented at 
+# Use the acc-py CI templates documented at
 # https://acc-py.web.cern.ch/gitlab-mono/acc-co/devops/python/acc-py-gitlab-ci-templates/docs/templates/master/
 include:
  - project: acc-co/devops/python/acc-py-gitlab-ci-templates
