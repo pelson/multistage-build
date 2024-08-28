@@ -16,19 +16,16 @@ classifiers = [
 authors = [
   { name = "Phil Elson", email = "philip.elson@cern.ch" },
 ]
-# Specify the minimum Python version required. It is not safe to use
-# this to control the *upper* version of Python.
 requires-python = ">=3.7"
 
-# The core dependencies of the project.
 dependencies = [
-  # "numpy",
-  # "other-mandatory-requirement",
+  'tomli >= 1.1.0 ; python_version < "3.11"',
 ]
 
 [project.optional-dependencies]
 # The optional dependencies of the project, installable using the "extras" syntax.
 test = [
+  "build",
   "pytest",
 ]
 doc = [
