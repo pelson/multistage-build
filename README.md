@@ -66,7 +66,7 @@ version = "0.1.0"
 
 The current functionality includes:
 
- * Hooks for build-wheel
+ * Hooks for build-wheel (`post-build-wheel`), and build-editable (`post-build-editable`)
  * Ability to have local definitions included, using the same mechanism as
    in-source builds from PEP-517.
 
