@@ -12,8 +12,41 @@ import multistage_build
 
 project_root = pathlib.Path(multistage_build.__file__).parent
 
+
+def install_multistage_build(environment_prefix: pathlib.Path) -> None:
+    # If we are running with the `pyproject.toml` available, install using
+    # that, otherwise install the directory and the dependencies manually.
+    mutistage_root = pathlib.Path(__file__).absolute().parents[2]
+    if (mutistage_root / 'pyproject.toml').exists():
+        subprocess.check_call(
+            [
+                environment_prefix / 'bin' / 'python',
+                '-m',
+                'pip',
+                'install',
+                mutistage_root,
+            ],
+        )
+    else:
+        # Copy into site-packages
+        sp_dirs = list((environment_prefix / 'lib').glob('python*.*'))
+        if len(sp_dirs) != 1:
+            raise ValueError("Site-packages of environment not found")
+        [sp_dir] = sp_dirs
+        shutil.copytree(mutistage_root / 'multistage_build', sp_dir)
+        # Now install the dependencies
+        subprocess.check_call(
+            [
+                environment_prefix / 'bin' / 'python',
+                '-m',
+                'pip',
+                'install',
+                'tomli >= 1.1.0 ; python_version < "3.11"',
+            ],
+        )
+
+
 def test_build_wheel__no_hooks(tmp_path):
-    print(project_root)
     backend_root = tmp_path / 'backend-root'
     backend_root.mkdir(exist_ok=False)
     shutil.copytree(project_root, backend_root / 'multistage_build')
@@ -272,9 +305,8 @@ def entrypoint_venv(tmp_path_factory):
     venv_path = tmp_path_factory.mktemp("entrypoint-venv")
     subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
 
-    mutistage_root = pathlib.Path(__file__).absolute().parents[2]
-    subprocess.check_call([venv_path / 'bin' / 'python', '-m', 'pip', 'install', mutistage_root, 'setuptools', 'wheel', 'build'])
-
+    install_multistage_build(venv_path)
+    subprocess.check_call([venv_path / 'bin' / 'python', '-m', 'pip', 'install', 'setuptools', 'wheel', 'build'])
     return venv_path
 
 
