@@ -41,6 +41,7 @@ def install_multistage_build(environment_prefix: pathlib.Path) -> None:
                 '-m',
                 'pip',
                 'install',
+                'importlib_metadata >= 4.6 ; python_version < "3.10"',
                 'tomli >= 1.1.0 ; python_version < "3.11"',
             ],
         )
@@ -57,6 +58,7 @@ def test_build_wheel__no_hooks(tmp_path):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
@@ -101,6 +103,7 @@ def test_build_wheel__build_backend_path(tmp_path):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
@@ -135,6 +138,7 @@ def test_build_wheel__simple_hook(tmp_path):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
@@ -182,6 +186,7 @@ def test_build_wheel__hook_with_path(tmp_path):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
@@ -228,6 +233,7 @@ def test_build_editable__hook_with_path(tmp_path):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
@@ -278,6 +284,7 @@ def test_prepare_metadata__hook_with_path(tmp_path, capfd):
     requires = [
         'setuptools',
         'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
         'tomli >= 1.1.0 ; python_version < "3.11"',
     ]
     build-backend = "multistage_build:backend"
