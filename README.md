@@ -10,7 +10,7 @@ example, we may wish to inject some additional metadata into the wheel. To do
 this, we should write a function which accepts the wheel path as its only
 argument, for example:
 
-```
+```python
 def my_wheel_post_processing_func(wheel_path):
     print(f'The wheel to be processed is at {wheel_path}')
 ```
@@ -18,7 +18,7 @@ def my_wheel_post_processing_func(wheel_path):
 This function can then be declared as post-processing step of the PEP-517
 `build_wheel` function:
 
-```
+```toml
 [build-system]
 requires = [
     'multistage-build',
@@ -41,7 +41,7 @@ version = "0.1.0"
 We could also publish this functionality to the package repository, and consume
 it by declaring it as a build requirement:
 
-```
+```toml
 [build-system]
 requires = [
     'multistage-build',
@@ -71,15 +71,20 @@ as entrypoints.
 
 An example of a project which automatically registers build-time hooks using entry points:
 
-```
-    [project.entry-points.multistage_build]
-    post-prepare-metadata-for-build-wheel = "my_mod:prepare_metadata_for_build_wheel_fn"
-    post-build-wheel = "my_mod:build_editable_fn"
-    post-build-editable = "my_mod:build_wheel_fn"
+```toml
+[project.entry-points.multistage_build]
+post-prepare-metadata-for-build-wheel = "my_mod:prepare_metadata_for_build_wheel_fn"
+post-build-wheel = "my_mod:build_editable_fn"
+post-build-editable = "my_mod:build_wheel_fn"
 ```
 
-As is normal for entry-points, the name of the function is un-important.
+As is normal for entry-points, the name of the function is unimportant.
 It is possible to declare multiple entry-points per hook.
+A nice pattern would be to only run some behaviour if the hook is configured
+in the `pyproject.toml` (which is in the CWD when the hook is running); though
+this isn't obligatory (esp. when no configuration is needed - in that case,
+the existence of the project in the build environment is enough of a signal for
+the hook to be run).
 
 ## Status of work
 
