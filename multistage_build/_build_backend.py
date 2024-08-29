@@ -1,26 +1,20 @@
+
+from importlib import import_module
 from importlib.machinery import PathFinder
 import os
 import pathlib
 import sys
+import traceback
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
 
-
-
-HOOK_NAMES = {
-    "get_requires_for_build_wheel",
-    "prepare_metadata_for_build_wheel",
-    "build_wheel",
-    "get_requires_for_build_editable",
-    "prepare_metadata_for_build_editable",
-    "build_editable",
-    "get_requires_for_build_sdist",
-    "build_sdist",
-    "_supported_features",
-}
+if sys.version_info >= (3, 10):
+    from importlib.metadata import entry_points
+else:
+    from importlib_metadata import entry_points
 
 import typing
 
@@ -69,8 +63,6 @@ class _BackendPathFinder:
 
         return spec
 
-from importlib import import_module
-import traceback
 
 
 def _build_backend(backend: str, *, backend_path: typing.Optional[str]):
@@ -118,6 +110,10 @@ class BuildBackend:
         multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
         build_wheel_hooks = multistage_config.get('post-build-wheel', [])
         hooks = []
+        entrypoints = entry_points(group="multistage_build", name="post-build-wheel")
+        for entrypoint in entrypoints:
+            hooks.append(entrypoint.load())
+
         for hook in build_wheel_hooks:
             if isinstance(hook, str):
                 hook_function_ep = hook
@@ -137,6 +133,10 @@ class BuildBackend:
         multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
         declared_hooks = multistage_config.get('post-build-editable', [])
         hooks = []
+        entrypoints = entry_points(group="multistage_build", name="post-build-editable")
+        for entrypoint in entrypoints:
+            hooks.append(entrypoint.load())
+
         for hook in declared_hooks:
             if isinstance(hook, str):
                 hook_function_ep = hook
@@ -156,6 +156,9 @@ class BuildBackend:
         multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
         declared_hooks = multistage_config.get('post-prepare-metadata-for-build-wheel', [])
         hooks = []
+        entrypoints = entry_points(group="multistage_build", name="post-prepare-metadata-for-build-wheel")
+        for entrypoint in entrypoints:
+            hooks.append(entrypoint.load())
         for hook in declared_hooks:
             if isinstance(hook, str):
                 hook_function_ep = hook
@@ -220,8 +223,9 @@ class BuildBackend:
 
         def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
             result = backend_build_editable(wheel_directory, config_settings, metadata_directory)
+            wheel_path = pathlib.Path(wheel_directory) / result
             for hook in self._load_build_editable_hooks():
-                hook(result)
+                hook(wheel_path)
             return result
 
         return build_editable

@@ -62,6 +62,25 @@ version = "0.1.0"
 ...
 ```
 
+
+## Plugin based hooks
+
+For tools wishing to expose a standard behaviour, without requiring the user to
+declare each of the hooks manually, it is possible to declare potential hooks
+as entrypoints.
+
+An example of a project which automatically registers build-time hooks using entry points:
+
+```
+    [project.entry-points.multistage_build]
+    post-prepare-metadata-for-build-wheel = "my_mod:prepare_metadata_for_build_wheel_fn"
+    post-build-wheel = "my_mod:build_editable_fn"
+    post-build-editable = "my_mod:build_wheel_fn"
+```
+
+As is normal for entry-points, the name of the function is un-important.
+It is possible to declare multiple entry-points per hook.
+
 ## Status of work
 
 The current functionality includes:
@@ -76,3 +95,4 @@ There are a few known features not yet implemented:
 
  * Hooks for sdist
  * Hooks for all other PEP-517 and PEP-660 hooks
+ * Ability to override multiple hooks with a signle declaration (e.g. editable and build hooks). Perhaps allow entrypoint definitions so that you get it simply by having the dependency installed?
