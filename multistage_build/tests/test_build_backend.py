@@ -29,11 +29,11 @@ def install_multistage_build(environment_prefix: pathlib.Path) -> None:
         )
     else:
         # Copy into site-packages
-        sp_dirs = list((environment_prefix / 'lib').glob('python*.*'))
-        if len(sp_dirs) != 1:
-            raise ValueError("Site-packages of environment not found")
-        [sp_dir] = sp_dirs
-        shutil.copytree(mutistage_root / 'multistage_build', sp_dir)
+        python_dirs = list((environment_prefix / 'lib').glob('python*.*'))
+        if len(python_dirs) != 1:
+            raise ValueError("A single lib/python* directory was not found")
+        sp_dir = python_dirs[0] / 'site-packages'
+        shutil.copytree(mutistage_root / 'multistage_build', sp_dir / 'multistage_build')
         # Now install the dependencies
         subprocess.check_call(
             [
