@@ -1,0 +1,35 @@
+# Use the acc-py CI templates documented at
+# https://acc-py.web.cern.ch/gitlab-mono/acc-co/devops/python/acc-py-gitlab-ci-templates/docs/templates/master/
+include:
+ - project: acc-co/devops/python/acc-py-gitlab-ci-templates
+   file: v2/python.gitlab-ci.yml
+
+variables:
+  project_name: multistage_build
+
+
+# Build a source distribution for multistage-build.
+build_sdist:
+  extends: .acc_py_build_sdist
+
+
+# Build a wheel for multistage-build.
+build_wheel:
+  extends: .acc_py_build_wheel
+
+
+# A development installation of multistage-build tested with pytest.
+test_dev:
+  extends: .acc_py_dev_test
+
+
+# A full installation of multistage-build (as a wheel) tested with pytest on an Acc-Py image.
+test_wheel:
+  extends:
+   - .acc_py_wheel_test
+   - .acc_py_run_on_potential_release_candidates
+
+
+# Release the source distribution and the wheel to the acc-py package index, only on git tag.
+publish:
+  extends: .acc_py_publish
