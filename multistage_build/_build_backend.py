@@ -64,7 +64,6 @@ class _BackendPathFinder:
         return spec
 
 
-
 def _build_backend(backend: str, *, backend_path: typing.Optional[str]):
     """Find and load the build backend"""
 
