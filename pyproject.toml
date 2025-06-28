@@ -24,7 +24,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The optional dependencies of the project, installable using the "extras" syntax.
 test = [
   "build",
   "pytest",
@@ -33,38 +32,19 @@ test = [
 doc = [
 ]
 dev = [
-  # Dependencies for development of the project, such as type checkers,
-  # linters, etc.
-  # "requirement-for-development-purposes-only",
-
-  # Include the "test" and "doc" dependencies in the dev dependencies.
   "multistage-build[doc,test]",
 ]
 
 [project.urls]
-# Homepage = "<Insert your URL>"
-# Repository = "<Insert your URL>"
+Homepage = "https://github.com/pelson/multistage-build"
+Repository = "https://github.com/pelson/multistage-build"
 
 [tool.setuptools.packages.find]
 include = ["multistage_build", "multistage_build.*"]
 
-[tool.setuptools.package-data]
-# All package data which is tracked by git is included automatically due to
-# include-package-data=true (the default) along with setuptools-scm. More details at:
-# https://setuptools.pypa.io/en/latest/userguide/datafiles.html#include-package-data
-
 [tool.setuptools_scm]
-# Tell setuptools_scm to write a _version.py file in the package. The
-# _version.py file must not be committed to the repository.
-# In future versions of setuptools-scm this option will be re-named to
-# "version_file". Docs for this version can be
-# found at https://acc-py-repo.cern.ch/browse/project/setuptools-scm/7.1.0
+# Tell setuptools_scm to write a _version.py file in the package.
 write_to = "multistage_build/_version.py"
-
-[tool.acc_py_template]
-features = [
-  {name = "core", version = 2},
-]
 
 [tool.isort]
 multi_line_output = 3

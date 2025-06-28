@@ -78,6 +78,11 @@ post-build-wheel = "my_mod:build_editable_fn"
 post-build-editable = "my_mod:build_wheel_fn"
 ```
 
+These hooks will get called for any user of the multistage_build backend, even if
+the project declaring these entrypoints doesn't itself use multistage-build.
+It allows one to build a library of hooks, and to have consumers add them by
+adding extra build dependencies (and declaring a multistage-build backend).
+
 As is normal for entry-points, the name of the function is unimportant.
 It is possible to declare multiple entry-points per hook.
 A nice pattern would be to only run some behaviour if the hook is configured
@@ -90,7 +95,7 @@ the hook to be run).
 
 The current functionality includes:
 
- * Hooks for build-wheel (`post-build-wheel`), and build-editable
+ * Hooks for build-sdist (`post-build-sdist``), build-wheel (`post-build-wheel`), and build-editable
    (`post-build-editable`), and prepare-metadata-for-build-wheel
    (`post-prepare-metadata-for-build-wheel`)
  * Ability to have local definitions included, using the same mechanism as
