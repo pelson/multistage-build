@@ -13,6 +13,14 @@ import multistage_build
 project_root = pathlib.Path(multistage_build.__file__).parent
 
 
+def check_output_has_content(content: str, output: str) -> bool:
+    if content in output:
+        return True
+    print(output)
+    assert content in output, f'The content "{content}" does not appear in the output'
+    return False
+
+
 def install_multistage_build(environment_prefix: pathlib.Path) -> None:
     # If we are running with the `pyproject.toml` available, install using
     # that, otherwise install the directory and the dependencies manually.
@@ -24,6 +32,7 @@ def install_multistage_build(environment_prefix: pathlib.Path) -> None:
                 '-m',
                 'pip',
                 'install',
+                '--disable-pip-version-check',
                 mutistage_root,
             ],
         )
@@ -41,6 +50,7 @@ def install_multistage_build(environment_prefix: pathlib.Path) -> None:
                 '-m',
                 'pip',
                 'install',
+                '--disable-pip-version-check',
                 'importlib_metadata >= 4.6 ; python_version < "3.10"',
                 'tomli >= 1.1.0 ; python_version < "3.11"',
             ],
@@ -93,6 +103,11 @@ def test_build_wheel__build_backend_path(tmp_path):
     (another_backend_root / 'setuptools_wrapper.py').write_text(
         textwrap.dedent('''
         from setuptools.build_meta import *
+        import setuptools.build_meta
+
+        def build_wheel(*args, **kwargs):
+            print('My custom build function')
+            return setuptools.build_meta.build_wheel(*args, **kwargs)
     '''),
     )
 
@@ -125,6 +140,7 @@ def test_build_wheel__build_backend_path(tmp_path):
         text=True,
     )
     assert 'Successfully built' in out
+    assert 'My custom build function' in out
 
 
 def test_build_wheel__simple_hook(tmp_path):
@@ -159,6 +175,7 @@ def test_build_wheel__simple_hook(tmp_path):
     # TODO: Capture the wheel, and validate it.
     out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True)
     assert 'PosixPath(' in out
+    assert 'Successfully built' in out
 
 
 def test_build_wheel__hook_with_path(tmp_path):
@@ -252,13 +269,12 @@ def test_build_editable__hook_with_path(tmp_path):
     )
 
     venv_dir = tmp_path / 'venv'
-    out = subprocess.check_output(
+    subprocess.check_call(
         [sys.executable, '-m', 'venv', venv_dir],
         text=True,
     )
 
-    # TODO: Capture the wheel, and validate it.
-    out = subprocess.check_output([venv_dir / 'bin' / 'python', '-m', 'pip', 'install', '--editable', '.', '--verbose'], cwd=tmp_path, stderr=subprocess.STDOUT, text=True)
+    out = subprocess.check_output([venv_dir / 'bin' / 'python', '-m', 'pip', 'install', '--editable', '.', '--verbose', '--disable-pip-version-check'], cwd=tmp_path, stderr=subprocess.STDOUT, text=True)
     assert 'Another func given wheel' in out
 
 
@@ -313,7 +329,7 @@ def entrypoint_venv(tmp_path_factory):
     subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
 
     install_multistage_build(venv_path)
-    subprocess.check_call([venv_path / 'bin' / 'python', '-m', 'pip', 'install', 'setuptools', 'wheel', 'build'])
+    subprocess.check_call([venv_path / 'bin' / 'python', '-m', 'pip', 'install', 'pip', 'setuptools>=65', 'wheel', 'build', '--disable-pip-version-check'])
     return venv_path
 
 
@@ -325,19 +341,23 @@ def entrypoint_pkg(entrypoint_venv, tmp_path_factory):
     (package_dir / '__init__.py').write_text(
         textwrap.dedent('''
         def build_wheel_hook(whl_path):
-             print(f'EP build-wheel hook: {whl_path}')
+            print(f'EP build-wheel hook: {whl_path}')
 
         def build_editable_hook(whl_path):
-             print(f'EP build-editable hook: {whl_path}')
+            print(f'EP build-editable hook: {whl_path}')
 
         def prepare_metadata_for_build_wheel_hook(metadata_dir):
-             print(f'EP prepare-metadata-for-build-wheel hook: {metadata_dir}')
+            print(f'EP prepare-metadata-for-build-wheel hook: {metadata_dir}')
+
+        def build_sdist_hook(metadata_dir):
+            print(f'EP build-sdist hook: {metadata_dir}')
+
     '''),
     )
     (entrypoint_pkg / 'pyproject.toml').write_text(
         textwrap.dedent('''
     [build-system]
-    requires = []
+    requires = ['setuptools>=65']
     build-backend = "setuptools.build_meta"
 
     [project]
@@ -348,11 +368,12 @@ def entrypoint_pkg(entrypoint_venv, tmp_path_factory):
     post-prepare-metadata-for-build-wheel = "test_entrypoint_pkg:prepare_metadata_for_build_wheel_hook"
     post-build-wheel = "test_entrypoint_pkg:build_wheel_hook"
     post-build-editable = "test_entrypoint_pkg:build_editable_hook"
+    post-build-sdist = "test_entrypoint_pkg:build_sdist_hook"
     '''),
     )
-    subprocess.check_call([entrypoint_venv / 'bin' / 'python', '-m', 'pip', 'install', entrypoint_pkg, '--no-build-isolation'])
-
+    subprocess.check_call([entrypoint_venv / 'bin' / 'python', '-m', 'pip', 'install', entrypoint_pkg, '--no-build-isolation', '--disable-pip-version-check'])
     return entrypoint_pkg
+
 
 @pytest.fixture
 def entrypoint_using_pkg(tmp_path):
@@ -362,7 +383,7 @@ def entrypoint_using_pkg(tmp_path):
     pyprj.write_text(
         textwrap.dedent("""
         [build-system]
-        requires = ['setuptools', 'wheel', 'multistage-build']
+        requires = ['setuptools', 'multistage-build']
         build-backend = "multistage_build:backend"
 
         [tool.multistage-build]
@@ -377,13 +398,18 @@ def entrypoint_using_pkg(tmp_path):
 
 
 def test_build_wheel__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg):
-    out = subprocess.check_output([entrypoint_venv / 'bin' / 'python', '-m', 'build', '-w', entrypoint_using_pkg, '--no-isolation', '--skip-dependency-check'], stderr=subprocess.STDOUT, text=True)
-    assert 'EP build-wheel hook' in out
+    out = subprocess.check_output([entrypoint_venv / 'bin' / 'python', '-m', 'build', '--wheel', entrypoint_using_pkg, '--no-isolation', '--skip-dependency-check'], stderr=subprocess.STDOUT, text=True)
+    assert check_output_has_content('EP build-wheel hook', out)
 
 
 def test_build_editable__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg):
-    out = subprocess.check_output([entrypoint_venv / 'bin' / 'python', '-m', 'pip', 'install', '--editable', entrypoint_using_pkg, '--no-build-isolation', '--verbose'], stderr=subprocess.STDOUT, text=True)
-    assert 'EP build-editable hook' in out
+    out = subprocess.check_output([entrypoint_venv / 'bin' / 'python', '-m', 'pip', 'install', '--editable', entrypoint_using_pkg, '--no-build-isolation', '--disable-pip-version-check', '--verbose'], stderr=subprocess.STDOUT, text=True)
+    assert check_output_has_content('EP build-editable hook', out)
+
+
+def test_build_sdist__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg):
+    out = subprocess.check_output([entrypoint_venv / 'bin' / 'python', '-m', 'build', '--sdist', entrypoint_using_pkg, '--no-isolation', '--skip-dependency-check'], stderr=subprocess.STDOUT, text=True)
+    assert check_output_has_content('EP build-sdist hook', out)
 
 
 def test_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg):
@@ -395,4 +421,4 @@ def test_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_
         ],
         text=True,
     )
-    assert 'EP prepare-metadata-for-build-wheel hook' in out
+    assert check_output_has_content('EP prepare-metadata-for-build-wheel hook', out)

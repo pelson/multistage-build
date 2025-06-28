@@ -34,7 +34,7 @@ jobs:
         pre-commit run -a
     - name: Test with pytest
       run: |
-        python -m pytest .
+        python -m pytest -ssvv .
 
   static_analysis:
     strategy:
