@@ -74,6 +74,7 @@ An example of a project which automatically registers build-time hooks using ent
 ```toml
 [project.entry-points.multistage_build]
 post-prepare-metadata-for-build-wheel = "my_mod:prepare_metadata_for_build_wheel_fn"
+post-build-sdist = "my_mod:build_editable_fn"
 post-build-wheel = "my_mod:build_editable_fn"
 post-build-editable = "my_mod:build_wheel_fn"
 ```
@@ -103,6 +104,5 @@ The current functionality includes:
 
 There are a few known features not yet implemented:
 
- * Hooks for sdist
  * Hooks for all other PEP-517 and PEP-660 hooks
- * Ability to override multiple hooks with a signle declaration (e.g. editable and build hooks). Perhaps allow entrypoint definitions so that you get it simply by having the dependency installed?
+ * Ability to override multiple hooks with a single declaration (e.g. editable and build hooks). Perhaps allow entrypoint definitions so that you get it simply by having the dependency installed?
