@@ -323,6 +323,63 @@ def test_prepare_metadata__hook_with_path(tmp_path, capfd):
     assert 'Prepare metadata called and hooked' in out
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="setuptools on Python 3.7 does not implement prepare_metadata_for_build_editable",
+)
+def test_prepare_metadata_for_build_editable__hook_with_path(tmp_path, capfd):
+    backend_root = tmp_path / 'backend-root'
+    backend_root.mkdir(exist_ok=False)
+    shutil.copytree(project_root, backend_root / 'multistage_build')
+
+    another_backend_root = tmp_path / 'backend-root2'
+    another_backend_root.mkdir(exist_ok=False)
+
+    (another_backend_root / 'some_mod.py').write_text(
+        textwrap.dedent('''
+        def another_func(dist_info_path):
+            print(f'Prepare editable metadata called and hooked: {dist_info_path}')
+    '''),
+    )
+
+    pyprj = tmp_path / 'pyproject.toml'
+    pyprj.write_text(
+        textwrap.dedent("""
+    [build-system]
+    requires = [
+        'setuptools',
+        'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
+        'tomli >= 1.1.0 ; python_version < "3.11"',
+    ]
+    build-backend = "multistage_build:backend"
+    backend-path = ["backend-root"]
+
+    [tool.multistage-build]
+    build-backend = "setuptools.build_meta"
+    post-prepare-metadata-for-build-editable = [
+        {hook-function="some_mod:another_func", hook-path="backend-root2"},
+    ]
+
+    [project]
+    name = "some-project"
+    version = "0.1.0"
+    """),
+    )
+
+    metadata_dir = tmp_path / 'metadata'
+    metadata_dir.mkdir()
+    hook_caller = pyproject_hooks.BuildBackendHookCaller(
+        source_dir=str(tmp_path),
+        build_backend='multistage_build:backend',
+        backend_path=['backend-root'],
+        runner=pyproject_hooks.default_subprocess_runner,
+    )
+    hook_caller.prepare_metadata_for_build_editable(str(metadata_dir))
+    out, err = capfd.readouterr()
+    assert 'Prepare editable metadata called and hooked' in out
+
+
 @pytest.fixture(scope='session')
 def entrypoint_venv(tmp_path_factory):
     venv_path = tmp_path_factory.mktemp("entrypoint-venv")
@@ -349,6 +406,9 @@ def entrypoint_pkg(entrypoint_venv, tmp_path_factory):
         def prepare_metadata_for_build_wheel_hook(metadata_dir):
             print(f'EP prepare-metadata-for-build-wheel hook: {metadata_dir}')
 
+        def prepare_metadata_for_build_editable_hook(metadata_dir):
+            print(f'EP prepare-metadata-for-build-editable hook: {metadata_dir}')
+
         def build_sdist_hook(metadata_dir):
             print(f'EP build-sdist hook: {metadata_dir}')
 
@@ -366,6 +426,7 @@ def entrypoint_pkg(entrypoint_venv, tmp_path_factory):
 
     [project.entry-points.multistage_build]
     post-prepare-metadata-for-build-wheel = "test_entrypoint_pkg:prepare_metadata_for_build_wheel_hook"
+    post-prepare-metadata-for-build-editable = "test_entrypoint_pkg:prepare_metadata_for_build_editable_hook"
     post-build-wheel = "test_entrypoint_pkg:build_wheel_hook"
     post-build-editable = "test_entrypoint_pkg:build_editable_hook"
     post-build-sdist = "test_entrypoint_pkg:build_sdist_hook"
@@ -422,3 +483,27 @@ def test_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_
         text=True,
     )
     assert check_output_has_content('EP prepare-metadata-for-build-wheel hook', out)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="setuptools on Python 3.7 does not implement prepare_metadata_for_build_editable",
+)
+def test_editable_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg, tmp_path):
+    metadata_dir = tmp_path / 'metadata'
+    metadata_dir.mkdir()
+    out = subprocess.check_output(
+        [
+            entrypoint_venv / 'bin' / 'python',
+            '-c',
+            (
+                'import pyproject_hooks;'
+                'pyproject_hooks.BuildBackendHookCaller('
+                f'source_dir=r"{entrypoint_using_pkg}",'
+                'build_backend="multistage_build:backend",'
+                f').prepare_metadata_for_build_editable(r"{metadata_dir}")'
+            ),
+        ],
+        text=True,
+    )
+    assert check_output_has_content('EP prepare-metadata-for-build-editable hook', out)
