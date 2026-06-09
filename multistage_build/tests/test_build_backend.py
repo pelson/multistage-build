@@ -323,6 +323,10 @@ def test_prepare_metadata__hook_with_path(tmp_path, capfd):
     assert 'Prepare metadata called and hooked' in out
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="setuptools on Python 3.7 does not implement prepare_metadata_for_build_editable",
+)
 def test_prepare_metadata_for_build_editable__hook_with_path(tmp_path, capfd):
     backend_root = tmp_path / 'backend-root'
     backend_root.mkdir(exist_ok=False)
@@ -481,6 +485,10 @@ def test_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_
     assert check_output_has_content('EP prepare-metadata-for-build-wheel hook', out)
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 8),
+    reason="setuptools on Python 3.7 does not implement prepare_metadata_for_build_editable",
+)
 def test_editable_metadata__entrypoint(entrypoint_venv, entrypoint_pkg, entrypoint_using_pkg, tmp_path):
     metadata_dir = tmp_path / 'metadata'
     metadata_dir.mkdir()
