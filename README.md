@@ -92,17 +92,46 @@ this isn't obligatory (esp. when no configuration is needed - in that case,
 the existence of the project in the build environment is enough of a signal for
 the hook to be run).
 
+## Hook points
+
+For each PEP-517 / PEP-660 hook that multistage-build wraps, there is a `pre-*`
+and a `post-*` extension point. Pre-hooks run before the wrapped backend is
+invoked; post-hooks run after it returns. Use `pre-*` when you need to mutate
+inputs (e.g. rewrite `pyproject.toml`) before the underlying backend reads
+them. Use `post-*` when you want to operate on the produced artefact.
+
+| Hook | When it fires | Arguments |
+|------|---------------|-----------|
+| `pre-build-wheel`  | Before `build_wheel`  | `(wheel_directory, config_settings)` |
+| `post-build-wheel` | After `build_wheel`   | `(wheel_path,)` |
+| `pre-build-editable`  | Before `build_editable`  | `(wheel_directory, config_settings)` |
+| `post-build-editable` | After `build_editable`   | `(wheel_path,)` |
+| `pre-build-sdist`  | Before `build_sdist`  | `(sdist_directory, config_settings)` |
+| `post-build-sdist` | After `build_sdist`   | `(sdist_path,)` |
+| `pre-prepare-metadata-for-build-wheel`  | Before `prepare_metadata_for_build_wheel`  | `(metadata_directory, config_settings)` |
+| `post-prepare-metadata-for-build-wheel` | After `prepare_metadata_for_build_wheel`   | `(dist_info_path,)` |
+| `pre-prepare-metadata-for-build-editable`  | Before `prepare_metadata_for_build_editable`  | `(metadata_directory, config_settings)` |
+| `post-prepare-metadata-for-build-editable` | After `prepare_metadata_for_build_editable`   | `(dist_info_path,)` |
+
+`config_settings` is the dict (or `None`) passed by the PEP-517 frontend. The
+`*_directory` arguments are the directories where the artefact will be
+written; they may not yet exist, and certainly do not yet contain the
+artefact.
+
+Each hook can be declared either inline in `pyproject.toml` under
+`[tool.multistage-build]`, or via the `multistage_build` entry-point group on
+an installed package. The `pre-*` hooks follow the same patterns as the
+`post-*` hooks documented above, under the matching name.
+
 ## Status of work
 
 The current functionality includes:
 
- * Hooks for build-sdist (`post-build-sdist``), build-wheel (`post-build-wheel`), and build-editable
-   (`post-build-editable`), and prepare-metadata-for-build-wheel
-   (`post-prepare-metadata-for-build-wheel`)
+ * Pre- and post- hooks for `build-wheel`, `build-editable`, `build-sdist`,
+   `prepare-metadata-for-build-wheel`, and `prepare-metadata-for-build-editable`.
  * Ability to have local definitions included, using the same mechanism as
    in-source builds from PEP-517.
 
 There are a few known features not yet implemented:
 
- * Hooks for all other PEP-517 and PEP-660 hooks
  * Ability to override multiple hooks with a single declaration (e.g. editable and build hooks). Perhaps allow entrypoint definitions so that you get it simply by having the dependency installed?
