@@ -143,6 +143,63 @@ def test_build_wheel__build_backend_path(tmp_path):
     assert 'My custom build function' in out
 
 
+def test_pre_build_wheel__simple_hook(tmp_path):
+    backend_root = tmp_path / 'backend-root'
+    backend_root.mkdir(exist_ok=False)
+    shutil.copytree(project_root, backend_root / 'multistage_build')
+
+    another_backend_root = tmp_path / 'backend-root2'
+    another_backend_root.mkdir(exist_ok=False)
+
+    record_file = tmp_path / 'pre_record.txt'
+    (another_backend_root / 'pre_mod.py').write_text(
+        textwrap.dedent(f'''
+        import os, pathlib
+        def record(wheel_directory, config_settings=None):
+            wd = pathlib.Path(wheel_directory)
+            existing = sorted(p.name for p in wd.glob('*.whl')) if wd.exists() else []
+            pathlib.Path(r"{record_file}").write_text(
+                f"wheel_directory={{wheel_directory}}\\n"
+                f"wheels_present={{existing}}\\n",
+            )
+            print(f'PRE build-wheel hook fired; wheels_present={{existing}}')
+    '''),
+    )
+
+    pyprj = tmp_path / 'pyproject.toml'
+    pyprj.write_text(
+        textwrap.dedent("""
+    [build-system]
+    requires = [
+        'setuptools',
+        'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
+        'tomli >= 1.1.0 ; python_version < "3.11"',
+    ]
+    build-backend = "multistage_build:backend"
+    backend-path = ["backend-root"]
+
+    [tool.multistage-build]
+    build-backend = "setuptools.build_meta"
+    pre-build-wheel = [
+        {hook-function="pre_mod:record", hook-path="backend-root2"},
+    ]
+
+    [project]
+    name = "some-project"
+    version = "0.1.0"
+    """),
+    )
+
+    out = subprocess.check_output([sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True)
+    assert 'PRE build-wheel hook fired' in out
+    assert 'Successfully built' in out
+    # Pre-hook must run BEFORE the wheel exists.
+    assert record_file.exists()
+    contents = record_file.read_text()
+    assert 'wheels_present=[]' in contents
+
+
 def test_build_wheel__simple_hook(tmp_path):
     backend_root = tmp_path / 'backend-root'
     backend_root.mkdir(exist_ok=False)
