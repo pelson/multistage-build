@@ -256,6 +256,8 @@ class BuildBackend:
     def build_sdist(self):
         backend = self._load_wrapped_backend()
         def build_sdist(sdist_directory, config_settings=None):
+            for hook in self._load_hooks('pre-build-sdist'):
+                hook(sdist_directory, config_settings)
             sdist_name = backend.build_sdist(sdist_directory, config_settings)
             sdist_path = pathlib.Path(sdist_directory) / sdist_name
             for hook in self._load_build_sdist_hooks():
@@ -272,6 +274,8 @@ class BuildBackend:
     def prepare_metadata_for_build_wheel(self):
         backend = self._load_wrapped_backend()
         def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
+            for hook in self._load_hooks('pre-prepare-metadata-for-build-wheel'):
+                hook(metadata_directory, config_settings)
             dist_info_name = backend.prepare_metadata_for_build_wheel(metadata_directory, config_settings)
             dist_info_path = pathlib.Path(metadata_directory) / dist_info_name
             for hook in self._load_prepare_metadata_for_build_wheel():
@@ -291,6 +295,8 @@ class BuildBackend:
         backend_build_editable = backend.build_editable
 
         def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
+            for hook in self._load_hooks('pre-build-editable'):
+                hook(wheel_directory, config_settings)
             result = backend_build_editable(wheel_directory, config_settings, metadata_directory)
             wheel_path = pathlib.Path(wheel_directory) / result
             for hook in self._load_build_editable_hooks():
@@ -311,6 +317,8 @@ class BuildBackend:
         backend_prepare_metadata_for_build_editable = backend.prepare_metadata_for_build_editable
 
         def prepare_metadata_for_build_editable(metadata_directory, config_settings=None):
+            for hook in self._load_hooks('pre-prepare-metadata-for-build-editable'):
+                hook(metadata_directory, config_settings)
             dist_info_name = backend_prepare_metadata_for_build_editable(metadata_directory, config_settings)
             dist_info_path = pathlib.Path(metadata_directory) / dist_info_name
             for hook in self._load_prepare_metadata_for_build_editable():
