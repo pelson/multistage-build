@@ -102,6 +102,27 @@ class BuildBackend:
 
         return _build_backend(backend=build_backend, backend_path=':'.join(backend_path))
 
+    def _load_hooks(self, name: str):
+        pyproject_content = tomllib.loads(
+            (self._source_root / 'pyproject.toml').read_text(),
+        )
+        multistage_config = pyproject_content.get('tool', {}).get('multistage-build', {})
+        declared_hooks = multistage_config.get(name, [])
+        hooks = []
+        for entrypoint in entry_points(group="multistage_build", name=name):
+            hooks.append(entrypoint.load())
+        for hook in declared_hooks:
+            if isinstance(hook, str):
+                hook_function_ep = hook
+                hook_path = None
+            else:
+                hook_function_ep = hook['hook-function']
+                hook_path = hook.get('hook-path', [])
+                if not isinstance(hook_path, str):
+                    hook_path = ':'.join(hook_path)
+            hooks.append(_build_backend(backend=hook_function_ep, backend_path=hook_path))
+        return hooks
+
     def _load_build_wheel_hooks(self):
         pyproject_content = tomllib.loads(
             (self._source_root / 'pyproject.toml').read_text(),
@@ -222,6 +243,8 @@ class BuildBackend:
         backend = self._load_wrapped_backend()
 
         def build_wheel(wheel_directory, config_settings=None, metadata_directory=None) -> str:
+            for hook in self._load_hooks('pre-build-wheel'):
+                hook(wheel_directory, config_settings)
             wheel_name = backend.build_wheel(wheel_directory, config_settings, metadata_directory)
             wheel_path = pathlib.Path(wheel_directory) / wheel_name
             for hook in self._load_build_wheel_hooks():
