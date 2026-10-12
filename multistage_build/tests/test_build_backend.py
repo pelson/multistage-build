@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+import zipfile
 
 import build.util
 import pyproject_hooks
@@ -198,6 +199,97 @@ def test_pre_build_wheel__simple_hook(tmp_path):
     assert record_file.exists()
     contents = record_file.read_text()
     assert 'wheels_present=[]' in contents
+
+
+def _write_post_load_backend_project(tmp_path, hook_source, project_extra=""):
+    backend_root = tmp_path / 'backend-root'
+    backend_root.mkdir(exist_ok=False)
+    shutil.copytree(project_root, backend_root / 'multistage_build')
+    hook_root = tmp_path / 'hook-root'
+    hook_root.mkdir(exist_ok=False)
+    (hook_root / 'load_mod.py').write_text(textwrap.dedent(hook_source))
+    (tmp_path / 'pyproject.toml').write_text(
+        textwrap.dedent("""
+    [build-system]
+    requires = [
+        'setuptools',
+        'wheel',
+        'importlib_metadata >= 4.6 ; python_version < "3.10"',
+        'tomli >= 1.1.0 ; python_version < "3.11"',
+    ]
+    build-backend = "multistage_build:backend"
+    backend-path = ["backend-root"]
+
+    [tool.multistage-build]
+    build-backend = "setuptools.build_meta"
+    post-load-backend = [
+        {hook-function="load_mod:on_load", hook-path="hook-root"},
+    ]
+
+    [project]
+    name = "some-project"
+    version = "0.1.0"
+    """) + textwrap.dedent(project_extra),
+    )
+
+
+def test_post_load_backend__runs_before_every_backend_call(tmp_path):
+    record_file = tmp_path / 'load_record.txt'
+    _write_post_load_backend_project(
+        tmp_path,
+        f'''
+        def on_load(backend):
+            with open(r"{record_file}", "a") as fh:
+                fh.write(backend.__name__ + "\\n")
+        ''',
+    )
+
+    out = subprocess.check_output(
+        [sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True,
+    )
+    assert 'Successfully built' in out
+    # Frontends run each PEP 517 call in a fresh process; the hook sees the
+    # wrapped backend in every one of them, including get_requires_for_*.
+    calls = record_file.read_text().splitlines()
+    assert len(calls) >= 2
+    assert set(calls) == {'setuptools.build_meta'}
+
+
+def test_post_load_backend__can_adjust_the_backend(tmp_path):
+    # setuptools rejects a dynamic requires-python already in
+    # get_requires_for_build_wheel, before any pre-* hook could act. A
+    # post-load-backend hook can supply the value in memory.
+    _write_post_load_backend_project(
+        tmp_path,
+        '''
+        import setuptools.config.pyprojecttoml as pyprojecttoml
+
+        def on_load(backend):
+            original = pyprojecttoml.load_file
+
+            def load_file(filepath):
+                data = original(filepath)
+                project = data.get("project", {})
+                if "requires-python" in project.get("dynamic", []):
+                    project["dynamic"].remove("requires-python")
+                    project["requires-python"] = ">=3.4"
+                return data
+
+            pyprojecttoml.load_file = load_file
+        ''',
+        project_extra='''
+        dynamic = ["requires-python"]
+        ''',
+    )
+
+    out = subprocess.check_output(
+        [sys.executable, '-m', 'build', '--wheel', '.'], cwd=tmp_path, text=True,
+    )
+    assert 'Successfully built' in out
+    wheel = next((tmp_path / 'dist').glob('*.whl'))
+    with zipfile.ZipFile(wheel) as z:
+        metadata = z.read('some_project-0.1.0.dist-info/METADATA').decode()
+    assert 'Requires-Python: >=3.4' in metadata
 
 
 def test_build_wheel__simple_hook(tmp_path):
