@@ -102,6 +102,7 @@ them. Use `post-*` when you want to operate on the produced artefact.
 
 | Hook | When it fires | Arguments |
 |------|---------------|-----------|
+| `post-load-backend` | After the wrapped backend is imported, before any call to it | `(backend,)` |
 | `pre-build-wheel`  | Before `build_wheel`  | `(wheel_directory, config_settings)` |
 | `post-build-wheel` | After `build_wheel`   | `(wheel_path,)` |
 | `pre-build-editable`  | Before `build_editable`  | `(wheel_directory, config_settings)` |
@@ -117,6 +118,13 @@ them. Use `post-*` when you want to operate on the produced artefact.
 `*_directory` arguments are the directories where the artefact will be
 written; they may not yet exist, and certainly do not yet contain the
 artefact.
+
+`post-load-backend` receives the wrapped backend object (e.g. the
+`setuptools.build_meta` module). Frontends run each PEP-517 call in a fresh
+process, so it fires before every call, including the
+`get_requires_for_build_*` calls that have no `pre-*` hook. Use it to adjust
+the backend in memory, e.g. to supply configuration it would otherwise reject
+before any `pre-*` hook gets a chance to run.
 
 Each hook can be declared either inline in `pyproject.toml` under
 `[tool.multistage-build]`, or via the `multistage_build` entry-point group on
