@@ -91,8 +91,11 @@ def _build_backend(backend: str, *, backend_path: typing.Optional[str]):
 class BuildBackend:
     def __init__(self):
         self._source_root = pathlib.Path.cwd()
+        self._wrapped_backend = None
 
     def _load_wrapped_backend(self):
+        if self._wrapped_backend is not None:
+            return self._wrapped_backend
         pyproject_content = tomllib.loads(
             (self._source_root / 'pyproject.toml').read_text(),
         )
@@ -100,7 +103,14 @@ class BuildBackend:
         build_backend = multistage_config['build-backend']
         backend_path = multistage_config.get('backend-path', [])
 
-        return _build_backend(backend=build_backend, backend_path=':'.join(backend_path))
+        backend = _build_backend(backend=build_backend, backend_path=':'.join(backend_path))
+        # Runs before any PEP 517 call reaches the backend in this process
+        # (frontends use a fresh process per call), including the
+        # get_requires_for_build_* calls, which have no pre-* hook.
+        for hook in self._load_hooks('post-load-backend'):
+            hook(backend)
+        self._wrapped_backend = backend
+        return backend
 
     def _load_hooks(self, name: str):
         pyproject_content = tomllib.loads(
